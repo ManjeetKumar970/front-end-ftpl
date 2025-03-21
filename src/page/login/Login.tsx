@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { loginTypes } from "./types/types";
+import { loginTypes, loginValidationTypes } from "./types/types";
 import { loginService } from "./services";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,26 +9,53 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import onlyLogo from "../../assets/main_only_logo.png";
 import BtnLoadingAnimation from "@/components/btnLoadingAnimation/btnLoadingAnimation";
+import Cookies from "js-cookie";
+import { loginSchema } from "./validation";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const Login = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [formData, setFormData] = useState<loginTypes>({
     email: "",
     password: "",
   });
 
+  const [errors, setErrors] = useState<loginValidationTypes>({
+    email: "",
+    password: "",
+  });
+
+  const validateForm = () => {
+    const result = loginSchema.safeParse(formData);
+    if (!result.success) {
+      const errorMessages: loginValidationTypes = {};
+      result.error.errors.forEach((err) => {
+        errorMessages[err.path[0]] = err.message;
+      });
+      setErrors(errorMessages);
+      return false;
+    }
+    setErrors({});
+    return true;
+  };
+
   const submitHandler = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
     setIsLoading(true);
     try {
       const response = await loginService(formData);
       if (response?.status === "success") {
-        localStorage.setItem("access_token", response?.data?.access_token);
+        Cookies.set("access_token", response?.data?.access_token, {
+          expires: 30,
+        });
         router.push("/");
       }
     } catch (error: unknown) {
-      toast.error(error?.response?.data?.message);
+      toast.error(error?.response?.data?.message || "Something went wrong");
     } finally {
       setIsLoading(false);
     }
@@ -77,11 +104,20 @@ const Login = () => {
                 value={formData.email}
                 required
                 autoComplete="email"
-                className="w-full rounded-md border border-gray-300 bg-gray-50 px-4 py-2 text-gray-900 shadow-sm focus:border-primary_dark focus:ring-primary_dark sm:text-sm"
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, email: e.target.value }))
-                }
+                className={`w-full rounded-md border px-4 py-2 text-gray-900 shadow-sm focus:ring-primary_dark sm:text-sm ${
+                  errors.email ? "border-red-500" : "border-gray-300"
+                }`}
+                onChange={(e) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    [e.target.id]: e.target.value,
+                  }));
+                  setErrors((prev) => ({ ...prev, [e.target.id]: "" }));
+                }}
               />
+              {errors.email && (
+                <p className="text-red-500 text-sm">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -91,20 +127,42 @@ const Login = () => {
               >
                 Password <span className="text-red-500">*</span>
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Enter your password"
-                value={formData.password}
-                required
-                autoComplete="current-password"
-                minLength={6}
-                className="w-full rounded-md border border-gray-300 bg-gray-50 px-4 py-2 text-gray-900 shadow-sm focus:border-primary_dark focus:ring-primary_dark sm:text-sm"
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, password: e.target.value }))
-                }
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={formData.password}
+                  required
+                  autoComplete="current-password"
+                  minLength={6}
+                  className={`w-full rounded-md border px-4 py-2 text-gray-900 shadow-sm focus:ring-primary_dark sm:text-sm ${
+                    errors.password ? "border-red-500" : "border-gray-300"
+                  }`}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      [e.target.id]: e.target.value,
+                    }));
+                    setErrors((prev) => ({ ...prev, [e.target.id]: "" }));
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? (
+                    <FaEyeSlash size={20} />
+                  ) : (
+                    <FaEye size={20} />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-red-500 text-sm">{errors.password}</p>
+              )}
               <div className="flex justify-end">
                 <Link
                   href="/forgot-password"
