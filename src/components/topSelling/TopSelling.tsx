@@ -83,7 +83,7 @@ export const TopSelling = () => {
   };
 
   return (
-    <div className="container bg-blue-100">
+    <>
       <div className="content-center text-center py-4">
         <h1 className="text-3xl font-bold">Top Selling of the Week</h1>
       </div>
@@ -186,6 +186,6 @@ export const TopSelling = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
